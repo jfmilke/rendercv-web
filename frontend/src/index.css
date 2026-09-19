@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-app-bg: #0b1220;
+  --color-panel-bg: #111a2e;
+  --color-field-bg: #1e2532;
+  --color-accent: #3b82f6;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+body {
+  background-color: var(--color-app-bg);
+  color: #e5e7eb;
+}
