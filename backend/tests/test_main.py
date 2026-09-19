@@ -43,3 +43,28 @@ async def test_security_headers_present_on_responses():
 
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
+
+    csp = response.headers["content-security-policy"]
+    # The baseline stays restrictive: no third-party or inline scripts, so the
+    # editor can only ever come from the locally bundled monaco-editor.
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "unsafe-inline" not in csp.split("style-src")[0]
+    assert "script-src" not in csp
+    # Monaco styles itself inline; without this the editor renders unstyled.
+    assert "style-src 'self' 'unsafe-inline'" in csp
+    # The generated PDF reaches the preview as a data: URL rendered to a canvas.
+    assert "img-src 'self' data: blob:" in csp
+    assert "connect-src 'self' data: blob:" in csp
+    assert "worker-src 'self' blob:" in csp
+
+
+@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json"])
+@pytest.mark.asyncio
+async def test_api_documentation_endpoints_are_disabled(path):
+    """Fix 14: the route listing must not be published."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(path)
+
+    assert response.status_code == 404

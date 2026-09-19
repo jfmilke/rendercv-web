@@ -4,6 +4,10 @@ import { YamlEditor } from "../src/components/YamlEditor";
 
 const configureMonacoYaml = vi.fn();
 
+// The real setup module pulls in the full monaco-editor bundle and Vite
+// `?worker` entry points, neither of which belongs in a jsdom unit test.
+vi.mock("../src/lib/monacoSetup", () => ({ monaco: {} }));
+
 vi.mock("monaco-yaml", () => ({
   configureMonacoYaml: (...args: unknown[]) => configureMonacoYaml(...args),
 }));

@@ -1,3 +1,7 @@
+// Side-effect import: points @monaco-editor/react at the locally bundled
+// monaco-editor (instead of a CSP-blocked CDN) and registers the web workers
+// monaco-yaml needs. Must be imported before the editor mounts.
+import "../lib/monacoSetup";
 import Editor, { OnMount } from "@monaco-editor/react";
 import { configureMonacoYaml } from "monaco-yaml";
 import type * as MonacoNS from "monaco-editor";
