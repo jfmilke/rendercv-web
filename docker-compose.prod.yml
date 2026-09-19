@@ -1,9 +1,15 @@
+# Deployment variant: pulls pre-built images from GHCR instead of building
+# locally. Use this for a Dockhand/TrueNAS-style deployment where the
+# compose file is run on a machine that doesn't have the source checked out.
+#
+# Pin to a specific released version instead of `latest` for reproducible
+# deploys, e.g. ghcr.io/jfmilke/rendercv-web-backend:0.1.0
+#
+# For local development, use docker-compose.yml instead (builds from source).
+
 services:
   worker:
-    image: rendercv-web-worker:local
-    build:
-      context: .
-      dockerfile: worker/Dockerfile
+    image: ghcr.io/jfmilke/rendercv-web-worker:latest
     environment:
       RENDER_TIMEOUT_SECONDS: ${RENDER_TIMEOUT_SECONDS:-30}
     networks:
@@ -26,10 +32,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: rendercv-web-backend:local
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: ghcr.io/jfmilke/rendercv-web-backend:latest
     ports:
       - "8000:8000"
     environment:
