@@ -42,6 +42,33 @@ describe("App", () => {
     );
   });
 
+  it("stops showing 'Generating...' when the render stream throws", async () => {
+    vi.spyOn(api, "streamRender").mockImplementation(async function* () {
+      yield { type: "log", line: "Compiling..." };
+      throw new Error("network died");
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Generate PDF"));
+
+    expect(await screen.findByText("Error: network died")).toBeInTheDocument();
+    // The button label reverts only if the finally block ran.
+    expect(await screen.findByText("Generate PDF")).toBeInTheDocument();
+    expect(screen.queryByText("Generating...")).not.toBeInTheDocument();
+  });
+
+  it("re-enables the generate button after an error result event", async () => {
+    vi.spyOn(api, "streamRender").mockImplementation(async function* () {
+      yield { type: "result", status: "error", message: "boom" };
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Generate PDF"));
+
+    expect(await screen.findByText("Error: boom")).toBeInTheDocument();
+    expect(await screen.findByText("Generate PDF")).toBeInTheDocument();
+  });
+
   it("shows the image upload control only when the backend reports it enabled", async () => {
     vi.spyOn(api, "fetchConfig").mockResolvedValue({ imageUploadEnabled: true });
     render(<App />);

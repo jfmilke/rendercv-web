@@ -48,6 +48,7 @@ export async function* streamRender(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let sawResult = false;
   while (true) {
     const { done, value } = await reader.read();
     if (done) {
@@ -59,9 +60,23 @@ export async function* streamRender(
     for (const frame of frames) {
       const event = parseSseFrame(frame);
       if (event) {
+        if (event.type === "result") {
+          sawResult = true;
+        }
         yield event;
       }
     }
+  }
+
+  // The stream ended without a terminal `result` event: the connection dropped
+  // mid-render (possibly leaving a partial frame in `buffer`). Surface it so
+  // the caller isn't left waiting forever with no explanation.
+  if (!sawResult) {
+    yield {
+      type: "result",
+      status: "error",
+      message: "Connection closed before the render finished",
+    };
   }
 }
 

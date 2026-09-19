@@ -62,6 +62,63 @@ describe("streamRender", () => {
       events.push(event);
     }
 
-    expect(events).toEqual([{ type: "log", line: "hello" }]);
+    expect(events).toEqual([
+      { type: "log", line: "hello" },
+      {
+        type: "result",
+        status: "error",
+        message: "Connection closed before the render finished",
+      },
+    ]);
+  });
+
+  it("surfaces an error when the stream ends without a terminal result event", async () => {
+    const sseText = 'event: log\ndata: {"line": "Rendering..."}\n\n';
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeStreamResponse(sseText)));
+
+    const events = [];
+    for await (const event of streamRender("cv: {}", "session-1")) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      { type: "log", line: "Rendering..." },
+      {
+        type: "result",
+        status: "error",
+        message: "Connection closed before the render finished",
+      },
+    ]);
+  });
+
+  it("surfaces an error when the stream drops mid-frame", async () => {
+    // A partial frame left in the buffer when the connection dies.
+    const sseText = 'event: result\ndata: {"status": "succ';
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeStreamResponse(sseText)));
+
+    const events = [];
+    for await (const event of streamRender("cv: {}", "session-1")) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      {
+        type: "result",
+        status: "error",
+        message: "Connection closed before the render finished",
+      },
+    ]);
+  });
+
+  it("does not append a spurious error after a terminal error result", async () => {
+    const sseText = 'event: result\ndata: {"status": "error", "message": "nope"}\n\n';
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeStreamResponse(sseText)));
+
+    const events = [];
+    for await (const event of streamRender("cv: {}", "session-1")) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([{ type: "result", status: "error", message: "nope" }]);
   });
 });

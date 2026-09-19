@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import logging
 import os
 import resource
 import shutil
@@ -9,9 +10,13 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 _MAX_CPU_SECONDS = 20
 _MAX_OPEN_FILES = 64
 _MAX_PROCESSES = 32
+# Grace period for a process that closed stdout but has not exited yet.
+_EXIT_GRACE_SECONDS = 5.0
 
 
 @dataclass
@@ -50,7 +55,7 @@ def _limit_subprocess_resources() -> None:
 async def _read_lines_with_timeout(
     stream: asyncio.StreamReader, timeout_seconds: float
 ) -> AsyncIterator[bytes]:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_seconds
     while True:
         remaining = deadline - loop.time()
@@ -74,7 +79,18 @@ async def run_render(
 
         if image is not None:
             image_filename, image_bytes = image
-            (tmpdir / image_filename).write_bytes(image_bytes)
+            # Defense in depth: the backend sanitizes filenames before caching
+            # them, but the worker is the component whose job is handling
+            # untrusted input, so it does not rely on that invariant. A name
+            # containing any path component is ignored rather than written.
+            if Path(image_filename).name == image_filename and image_filename not in (
+                "",
+                ".",
+                "..",
+            ):
+                (tmpdir / image_filename).write_bytes(image_bytes)
+            else:
+                logger.warning("Ignoring image with unsafe filename: %r", image_filename)
 
         pdf_path = tmpdir / "output.pdf"
         process = await asyncio.create_subprocess_exec(
@@ -102,7 +118,23 @@ async def run_render(
             yield RenderFailure(message=f"Render timed out after {timeout_seconds} seconds")
             return
 
-        return_code = await process.wait()
+        # A process can close stdout without exiting (e.g. stuck on other I/O);
+        # an unbounded wait() there would defeat the wall-clock timeout.
+        try:
+            return_code = await asyncio.wait_for(process.wait(), timeout=_EXIT_GRACE_SECONDS)
+        except TimeoutError:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(process.wait(), timeout=_EXIT_GRACE_SECONDS)
+            yield RenderFailure(
+                message=(
+                    "rendercv closed its output but did not exit within "
+                    f"{_EXIT_GRACE_SECONDS} seconds"
+                )
+            )
+            return
+
         if return_code == 0 and pdf_path.exists():
             yield RenderSuccess(pdf_bytes=pdf_path.read_bytes())
         else:

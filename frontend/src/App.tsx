@@ -35,16 +35,23 @@ function App() {
   async function handleGenerate() {
     setIsGenerating(true);
     setLogLines([]);
-    for await (const event of streamRender(yamlContent, sessionId)) {
-      if (event.type === "log") {
-        setLogLines((lines) => [...lines, event.line]);
-      } else if (event.status === "success") {
-        setPdfDataUrl(`data:application/pdf;base64,${event.pdfBase64}`);
-      } else {
-        setLogLines((lines) => [...lines, `Error: ${event.message}`]);
+    try {
+      for await (const event of streamRender(yamlContent, sessionId)) {
+        if (event.type === "log") {
+          setLogLines((lines) => [...lines, event.line]);
+        } else if (event.status === "success") {
+          setPdfDataUrl(`data:application/pdf;base64,${event.pdfBase64}`);
+        } else {
+          setLogLines((lines) => [...lines, `Error: ${event.message}`]);
+        }
       }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setLogLines((lines) => [...lines, `Error: ${message}`]);
+    } finally {
+      // Always clear the flag, otherwise the UI stays stuck on "Generating...".
+      setIsGenerating(false);
     }
-    setIsGenerating(false);
   }
 
   function handleDownloadYaml() {
