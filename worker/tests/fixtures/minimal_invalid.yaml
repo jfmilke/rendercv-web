@@ -1,0 +1,8 @@
+cv:
+  name: Bob Smith
+  sections:
+    experience:
+    - company: Acme Corp
+      position: Software Engineer
+      start_date: not-a-date
+      end_date: present
