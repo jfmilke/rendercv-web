@@ -56,3 +56,17 @@ async def test_render_rejects_non_string_yaml_content():
         response = await client.post("/render", json={"yaml_content": 12345})
 
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_render_rejects_malformed_content_length_header():
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.request(
+            "POST",
+            "/render",
+            content=b'{"yaml_content": "test"}',
+            headers={"content-length": "not-a-number"},
+        )
+
+    assert response.status_code == 413

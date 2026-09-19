@@ -20,8 +20,13 @@ worker_transport_override: httpx.AsyncBaseTransport | None = None
 @router.post("/render")
 async def render(request: Request) -> StreamingResponse:
     content_length = request.headers.get("content-length")
-    if content_length is not None and int(content_length) > settings.max_yaml_bytes + 10_000:
-        raise HTTPException(status_code=413, detail="Request body too large")
+    if content_length is not None:
+        try:
+            content_length_value = int(content_length)
+        except ValueError:
+            raise HTTPException(status_code=413, detail="Invalid Content-Length header") from None
+        if content_length_value > settings.max_yaml_bytes + 10_000:
+            raise HTTPException(status_code=413, detail="Request body too large")
 
     body = await request.json()
     yaml_content = body.get("yaml_content")
