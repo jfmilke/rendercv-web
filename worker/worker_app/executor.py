@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 _MAX_CPU_SECONDS = 20
 _MAX_OPEN_FILES = 64
-_MAX_PROCESSES = 32
 # Grace period for a process that closed stdout but has not exited yet.
 _EXIT_GRACE_SECONDS = 5.0
 
@@ -48,7 +47,6 @@ def _limit_subprocess_resources() -> None:
     """
     resource.setrlimit(resource.RLIMIT_CPU, (_MAX_CPU_SECONDS, _MAX_CPU_SECONDS))
     resource.setrlimit(resource.RLIMIT_NOFILE, (_MAX_OPEN_FILES, _MAX_OPEN_FILES))
-    resource.setrlimit(resource.RLIMIT_NPROC, (_MAX_PROCESSES, _MAX_PROCESSES))
     os.setsid()
 
 
