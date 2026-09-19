@@ -1,5 +1,9 @@
 # RenderCV Web
 
+> [!NOTE]
+> This is a personal convenience project which primarily used AI.
+> It's meant as an exploratory playground to test the wits of it and gain something useful
+
 A self-hosted web UI for [RenderCV](https://github.com/rendercv/rendercv): write your CV as YAML in the browser, render it to PDF, and get a live preview — without installing anything locally.
 
 - **YAML editor** with syntax highlighting and inline validation against RenderCV's own schema
@@ -30,7 +34,8 @@ Set these in `.env` (copied from `.env.example`):
 
 ## Security
 
-This app has **no built-in authentication** — anyone who can reach it can submit renders. It's meant for localhost or a trusted network. If you expose it beyond that, put a reverse proxy in front that handles access control and TLS (e.g. Caddy `basic_auth`, nginx `auth_basic`, an identity-aware proxy).
+This app has **no built-in authentication** and anyone who can reach it can submit renders.
+It's meant for localhost or a trusted network. If you expose it beyond that, put a reverse proxy in front that handles access control and TLS (e.g. Caddy `basic_auth`, nginx `auth_basic`, an identity-aware proxy).
 
 ## How it works
 
@@ -39,8 +44,6 @@ Three services in one Compose stack:
 - **frontend** — the browser UI (React), served by the backend
 - **backend** — the only service exposed to the network; relays render requests
 - **worker** — runs RenderCV itself, network-isolated with no access beyond the backend
-
-See [AGENTS.md](AGENTS.md) for the full architecture and the reasoning behind the security model.
 
 ## Contributing
 
