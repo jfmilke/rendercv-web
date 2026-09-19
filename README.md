@@ -42,7 +42,17 @@ docker compose up --build
 
 Then open http://localhost:8000.
 
-To enable the optional profile-photo upload feature (off by default — see the design spec for the security trade-offs this accepts), set `IMAGE_UPLOAD_ENABLED=true` in `.env` before starting.
+### No built-in authentication
+
+This application has **no authentication of any kind**: anyone who can reach the backend port can submit renders. It is meant to be run on localhost or on a trusted network. Do **not** expose it directly to the internet or to any untrusted network — put a reverse proxy in front of it that provides access control (for example Caddy's `basic_auth`, nginx `auth_basic`, or an identity-aware proxy), and terminate TLS there as well.
+
+### Environment variables
+
+Configured in `.env` (copied from `.env.example`):
+
+- `IMAGE_UPLOAD_ENABLED` (default `false`) — enables the optional profile-photo upload feature. See the design spec for the security trade-offs this accepts.
+- `RENDER_TIMEOUT_SECONDS` (default `30`) — wall-clock limit for a single `rendercv` render. It is passed to both the worker (which kills the render process at this deadline) and the backend (which sizes its request timeout to the worker slightly above it).
+- `WORKER_URL` (default `http://worker:8000`) — how the backend reaches the worker over the internal Docker network. This is set by `docker-compose.yml` and should not normally need changing.
 
 Design spec: `docs/superpowers/specs/2026-09-19-rendercv-web-design.md`
 Implementation plan: `docs/superpowers/plans/2026-09-19-rendercv-web-implementation.md`

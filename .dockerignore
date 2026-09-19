@@ -1,0 +1,25 @@
+# Keep the build context small and hermetic: host-built artifacts must never
+# leak into an image (notably frontend/node_modules over the container's own
+# `npm ci` result in backend/Dockerfile's frontend-build stage).
+.git/
+.gitignore
+.dockerignore
+
+.venv/
+**/__pycache__/
+**/*.pyc
+**/*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+**/node_modules/
+**/dist/
+**/.vite/
+**/tsconfig.tsbuildinfo
+
+.env
+.superpowers/
+docs/
+README.md
+**/.DS_Store

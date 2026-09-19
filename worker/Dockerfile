@@ -12,6 +12,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY worker/worker_app ./worker_app
 
+# Set HOME explicitly rather than relying on it being derived from /etc/passwd:
+# the Typst package cache below is keyed off $HOME, and it must resolve to the
+# same path at runtime even if compose overrides `user:`.
+ENV HOME=/home/worker
 USER worker
 
 # The worker container runs with no internet route at runtime (internal-only
