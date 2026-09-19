@@ -50,9 +50,8 @@ This application has **no authentication of any kind**: anyone who can reach the
 
 Configured in `.env` (copied from `.env.example`):
 
-- `IMAGE_UPLOAD_ENABLED` (default `false`) — enables the optional profile-photo upload feature. See the design spec for the security trade-offs this accepts.
+- `IMAGE_UPLOAD_ENABLED` (default `false`) — enables the optional profile-photo upload feature. See `AGENTS.md` for the security trade-offs this accepts.
 - `RENDER_TIMEOUT_SECONDS` (default `30`) — wall-clock limit for a single `rendercv` render. It is passed to both the worker (which kills the render process at this deadline) and the backend (which sizes its request timeout to the worker slightly above it).
 - `WORKER_URL` (default `http://worker:8000`) — how the backend reaches the worker over the internal Docker network. This is set by `docker-compose.yml` and should not normally need changing.
 
-Design spec: `docs/superpowers/specs/2026-09-19-rendercv-web-design.md`
-Implementation plan: `docs/superpowers/plans/2026-09-19-rendercv-web-implementation.md`
+See `AGENTS.md` for the architecture, the security model and why it's shaped this way, and development commands.
