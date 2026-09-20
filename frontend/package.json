@@ -8,13 +8,15 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource/lora": "^5.3.0",
     "@monaco-editor/react": "4.7.0",
     "monaco-editor": "0.52.2",
     "monaco-yaml": "5.5.1",
     "pdfjs-dist": "6.3.289",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-pdf": "11.0.0"
+    "react-pdf": "11.0.0",
+    "react-resizable-panels": "^4.12.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
