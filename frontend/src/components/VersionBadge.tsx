@@ -11,7 +11,7 @@ export function VersionBadge() {
   }, []);
 
   return (
-    <span className="text-xs text-gray-400">
+    <span className="font-serif text-xs italic text-muted">
       {version ? `rendercv v${version}` : "rendercv version unavailable"}
     </span>
   );

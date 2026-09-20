@@ -13,4 +13,21 @@ describe("OutputLog", () => {
     const log = screen.getByTestId("output-log");
     expect(log.textContent).toBe("Validating YAML...Compiling with Typst...Done.");
   });
+
+  it("shows no severity suffix when there are no errors or warnings", () => {
+    render(<OutputLog lines={["Compiling with Typst...", "Done."]} />);
+    expect(screen.getByText("Output — 2 lines")).toBeInTheDocument();
+  });
+
+  it("appends (Warning) to the title when a line mentions a warning", () => {
+    render(<OutputLog lines={["Compiling...", "warning: missing font"]} />);
+    expect(screen.getByText("Output — 2 lines (Warning)")).toBeInTheDocument();
+  });
+
+  it("appends (Error) to the title, taking priority over a warning", () => {
+    render(
+      <OutputLog lines={["warning: missing font", "Error: rendercv exited with code 1"]} />
+    );
+    expect(screen.getByText("Output — 2 lines (Error)")).toBeInTheDocument();
+  });
 });

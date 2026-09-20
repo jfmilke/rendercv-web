@@ -34,8 +34,12 @@ export function ImageUpload({ sessionId }: ImageUploadProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-panel-bg p-3 text-sm">
-      <label className="cursor-pointer rounded-lg bg-field-bg px-3 py-2 text-center">
+    <>
+      <label
+        className="cursor-pointer rounded-sm border border-rule bg-page px-3 py-1.5 font-serif text-sm text-ink-soft
+          transition-colors duration-150 hover:border-accent hover:text-accent
+          focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
         Upload photo
         <input
           type="file"
@@ -44,21 +48,27 @@ export function ImageUpload({ sessionId }: ImageUploadProps) {
           onChange={handleFileChange}
         />
       </label>
-      <p className="text-xs text-gray-500">Images over ~10MB may take a while to upload.</p>
+      <p className="text-xs text-muted">You can reference the image by just its filename.</p>
       {progress !== null && (
-        <div className="h-2 w-full rounded-full bg-field-bg">
-          <div className="h-2 rounded-full bg-accent" style={{ width: `${progress}%` }} />
+        <div className="h-1.5 w-40 overflow-hidden rounded-full bg-rule">
+          <div
+            className="h-full rounded-full bg-accent transition-[width] duration-200 ease-out"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       )}
       {uploadedFilename && (
-        <div className="flex items-center justify-between text-green-400">
+        <div className="flex items-center gap-2 text-sm text-success">
           <span>Received: {uploadedFilename}</span>
-          <button className="text-gray-400 underline" onClick={handleRemove}>
+          <button
+            className="text-muted underline transition-colors duration-150 hover:text-error"
+            onClick={handleRemove}
+          >
             Remove
           </button>
         </div>
       )}
-      {error && <p className="text-red-400">{error}</p>}
-    </div>
+      {error && <p className="text-sm text-error">{error}</p>}
+    </>
   );
 }

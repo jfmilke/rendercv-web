@@ -1,14 +1,100 @@
 @import "tailwindcss";
+@import "@fontsource/lora/500.css";
+@import "@fontsource/lora/500-italic.css";
+@import "@fontsource/lora/600.css";
 
 @theme {
-  --color-app-bg: #0b1220;
-  --color-panel-bg: #111a2e;
-  --color-field-bg: #1e2532;
-  --color-accent: #3b82f6;
+  --color-page: #f4ecdc;
+  --color-surface: #fffaf0;
+  --color-ink: #2b2620;
+  --color-ink-soft: #5b5346;
+  --color-accent: #274b6b;
+  --color-accent-soft: #3a6289;
+  --color-rule: #ddcfb2;
+  --color-muted: #9c9080;
+  --color-error: #9c3b2e;
+  --color-warning: #a9762d;
+  --color-success: #5f7350;
+  --font-serif: "Lora", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 body {
-  background-color: var(--color-app-bg);
-  color: #e5e7eb;
+  background-color: var(--color-page);
+  color: var(--color-ink);
+}
+
+/* A hand-set page shouldn't feel motorized: interactions ease in, nothing
+   moves on its own, and anyone who asked for less motion gets none. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lamp-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--color-accent) 0%, transparent);
+  }
+}
+
+.animate-lamp-glow {
+  animation: lamp-glow 1.8s ease-in-out infinite;
+}
+
+/* react-resizable-panels: the spine of the open-book spread. Widened past
+   its visible 1px line so the drag target is comfortable without looking
+   thick. */
+.book-spine {
+  width: 9px;
+  cursor: col-resize;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background: transparent;
+  outline: none;
+}
+
+.book-spine::before {
+  content: "";
+  width: 1px;
+  background: var(--color-rule);
+  transition:
+    background-color 150ms ease,
+    width 150ms ease;
+}
+
+.book-spine:hover::before,
+.book-spine:active::before,
+.book-spine:focus-visible::before {
+  width: 2px;
+  background: var(--color-accent);
+}
+
+/* react-pdf renders each page's white background as a plain block-level div
+   with no width of its own, so by default it stretches to fill whatever
+   panel it sits in while the canvas inside stays at the PDF's true size —
+   the page looks like it's "growing" as the panel resizes. Shrink-wrapping
+   it to its canvas keeps the page at its real, constant size (per the CV's
+   own `design.page.size`) regardless of panel or fullscreen width, and
+   centers it when there's spare room on either side. */
+.react-pdf__Page {
+  width: fit-content;
+  margin-inline: auto;
 }

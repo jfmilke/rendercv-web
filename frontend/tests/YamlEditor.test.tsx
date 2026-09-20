@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { YamlEditor } from "../src/components/YamlEditor";
 
 const configureMonacoYaml = vi.fn();
+const defineTheme = vi.fn();
 
 // The real setup module pulls in the full monaco-editor bundle and Vite
 // `?worker` entry points, neither of which belongs in a jsdom unit test.
@@ -14,7 +15,7 @@ vi.mock("monaco-yaml", () => ({
 
 vi.mock("@monaco-editor/react", () => ({
   default: ({ value, onChange, onMount }: any) => {
-    onMount?.({}, { editor: {}, languages: { yaml: {} } });
+    onMount?.({}, { editor: { defineTheme }, languages: { yaml: {} } });
     return (
       <textarea
         aria-label="yaml-editor"
@@ -45,5 +46,10 @@ describe("YamlEditor", () => {
     expect(configureMonacoYaml).toHaveBeenCalledOnce();
     const [, options] = configureMonacoYaml.mock.calls[0];
     expect(options.schemas[0].schema).toBeTruthy();
+  });
+
+  it("registers the manuscript theme on mount", () => {
+    render(<YamlEditor value="" onChange={vi.fn()} />);
+    expect(defineTheme).toHaveBeenCalledWith("manuscript", expect.any(Object));
   });
 });
