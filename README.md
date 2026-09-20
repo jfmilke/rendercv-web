@@ -2,13 +2,13 @@
 
 > [!NOTE]
 > This is a personal convenience project which primarily used AI.
-> It's meant as an exploratory playground to test the wits of it and gain something useful
+> It's meant as an exploratory playground to test the wits of it and gain something useful.
 
 A web UI you host yourself for [RenderCV](https://github.com/rendercv/rendercv): write your CV as YAML in the browser, render it to PDF, and get a live preview, all without installing anything locally.
 
 - **YAML editor** with syntax highlighting and inline validation against RenderCV's own schema
 - **Live PDF preview** of the rendered CV
-- **Upload/download** your YAML and the generated PDF
+- **Download** the generated PDF
 - **Output log** showing exactly what the RenderCV CLI printed
 - Optional **profile photo upload** (off by default)
 - Runs as a small Docker Compose stack: a browser UI, an API, and an isolated renderer
@@ -64,6 +64,17 @@ Three services in one Compose stack:
 - **worker**: runs RenderCV itself, isolated from the network with no access beyond the backend
 
 ## Contributing
+
+To work on the frontend, you can just spin up the docker container and start a seperate frontend session:
+
+```bash
+docker compose up -d
+
+cd frontend
+npm run dev
+```
+
+But to work completely locally, install the dependencies first:
 
 ```bash
 # Python (backend + worker)
