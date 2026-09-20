@@ -23,6 +23,7 @@ describe("App", () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
+    delete document.documentElement.dataset.theme;
     vi.spyOn(api, "fetchVersion").mockResolvedValue("2.8");
     vi.spyOn(api, "fetchConfig").mockResolvedValue({ imageUploadEnabled: false });
   });
@@ -104,5 +105,30 @@ describe("App", () => {
       "aria-expanded",
       "true"
     );
+  });
+
+  it("defaults to dark mode", () => {
+    render(<App />);
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(screen.getByRole("button", { name: "Switch to light mode" })).toBeInTheDocument();
+  });
+
+  it("switches to light mode, persisting the choice, and back again", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to light mode" }));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(localStorage.getItem("rendercv-web-theme")).toBe("light");
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to dark mode" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(localStorage.getItem("rendercv-web-theme")).toBe("dark");
+  });
+
+  it("starts in light mode when that was the last saved choice", () => {
+    localStorage.setItem("rendercv-web-theme", "light");
+    render(<App />);
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeInTheDocument();
   });
 });

@@ -6,9 +6,11 @@ import { PdfPreview } from "./components/PdfPreview";
 import { OutputLog } from "./components/OutputLog";
 import { VersionBadge } from "./components/VersionBadge";
 import { ImageUpload } from "./components/ImageUpload";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { fetchConfig, streamRender } from "./lib/api";
 import { getOrCreateSessionId } from "./lib/session";
 import { isErrorLine } from "./lib/logLines";
+import { THEME_STORAGE_KEY, type Theme } from "./lib/theme";
 import DEFAULT_YAML from "./assets/john-doe-classic-theme-cv.yaml?raw";
 
 const YAML_STORAGE_KEY = "rendercv-web-yaml-draft";
@@ -23,6 +25,9 @@ function App() {
   const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [imageUploadEnabled, setImageUploadEnabled] = useState(false);
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem(THEME_STORAGE_KEY) === "light" ? "light" : "dark")
+  );
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: "rendercv-web-spread",
     storage: window.localStorage,
@@ -34,9 +39,22 @@ function App() {
       .catch(() => setImageUploadEnabled(false));
   }, []);
 
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.dataset.theme = "dark";
+    } else {
+      delete document.documentElement.dataset.theme;
+    }
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
   function updateYaml(content: string) {
     setYamlContent(content);
     localStorage.setItem(YAML_STORAGE_KEY, content);
+  }
+
+  function toggleTheme() {
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
   }
 
   function appendLogLine(line: string) {
@@ -81,7 +99,10 @@ function App() {
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-rule bg-surface px-5 py-3">
-        <h1 className="font-serif text-lg font-medium tracking-wide text-ink">Rendercv Web</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-serif text-lg font-medium tracking-wide text-ink">Rendercv Web</h1>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
         <VersionBadge />
       </header>
       <Group
@@ -92,7 +113,7 @@ function App() {
         onLayoutChanged={onLayoutChanged}
       >
         <Panel id="yaml" defaultSize="50" minSize="20" className="h-full min-h-0 overflow-hidden">
-          <YamlEditor value={yamlContent} onChange={updateYaml} />
+          <YamlEditor value={yamlContent} onChange={updateYaml} theme={theme} />
         </Panel>
         <Separator className="book-spine" />
         <Panel id="pdf" defaultSize="50" minSize="20" className="h-full min-h-0 overflow-hidden">

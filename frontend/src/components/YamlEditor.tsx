@@ -6,13 +6,15 @@ import Editor, { OnMount } from "@monaco-editor/react";
 import { configureMonacoYaml } from "monaco-yaml";
 import type * as MonacoNS from "monaco-editor";
 import schema from "../schema/rendercv-schema.json";
+import type { Theme } from "../lib/theme";
 
 interface YamlEditorProps {
   value: string;
   onChange: (value: string) => void;
+  theme: Theme;
 }
 
-export function YamlEditor({ value, onChange }: YamlEditorProps) {
+export function YamlEditor({ value, onChange, theme }: YamlEditorProps) {
   const handleMount: OnMount = (_editor, monaco) => {
     // A quiet paper-and-ink theme so the editor reads as a page in the
     // spread, not a stock code-editor dropped on top of it.
@@ -59,7 +61,7 @@ export function YamlEditor({ value, onChange }: YamlEditorProps) {
     <Editor
       height="100%"
       defaultLanguage="yaml"
-      theme="manuscript"
+      theme={theme === "dark" ? "vs-dark" : "manuscript"}
       value={value}
       onChange={(newValue) => onChange(newValue ?? "")}
       onMount={handleMount}

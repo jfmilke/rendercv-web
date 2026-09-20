@@ -19,6 +19,24 @@
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
+/* Dark mode ("Aurora"): a cool graphite in place of the manuscript's warm
+   parchment, with an emerald/teal accent — same tokens, new values, so every
+   component picks it up without per-component changes. Opt-in only (via the
+   header toggle); the default is always the light manuscript look. */
+:root[data-theme="dark"] {
+  --color-page: #0b0f10;
+  --color-surface: #131817;
+  --color-ink: #e6ecea;
+  --color-ink-soft: #a9b3b1;
+  --color-accent: #2dd4bf;
+  --color-accent-soft: #5eead4;
+  --color-rule: #202826;
+  --color-muted: #6b7674;
+  --color-error: #f2665c;
+  --color-warning: #f0b429;
+  --color-success: #6cc067;
+}
+
 body {
   background-color: var(--color-page);
   color: var(--color-ink);
