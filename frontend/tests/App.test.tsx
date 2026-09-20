@@ -74,4 +74,35 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("Upload photo")).toBeInTheDocument();
   });
+
+  it("does not auto-open the output log for a successful render", async () => {
+    vi.spyOn(api, "streamRender").mockImplementation(async function* () {
+      yield { type: "log", line: "Compiling..." };
+      yield { type: "result", status: "success", pdfBase64: "AAAA" };
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Generate PDF"));
+
+    await screen.findByText("Compiling...");
+    expect(screen.getByRole("button", { name: /^Output/ })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+  });
+
+  it("auto-opens the output log when a render error occurs", async () => {
+    vi.spyOn(api, "streamRender").mockImplementation(async function* () {
+      yield { type: "result", status: "error", message: "boom" };
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByText("Generate PDF"));
+
+    await screen.findByText("Error: boom");
+    expect(screen.getByRole("button", { name: /^Output/ })).toHaveAttribute(
+      "aria-expanded",
+      "true"
+    );
+  });
 });
