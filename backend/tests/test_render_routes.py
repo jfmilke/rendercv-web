@@ -1,29 +1,23 @@
+import asyncio
 from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
-from fastapi.responses import Response
 from httpx import ASGITransport, AsyncClient
 
 import backend_app.render_routes as render_routes
+from backend_app.config import settings
 from backend_app.render_routes import router
-from worker_app.main import app as worker_app
+from backend_app.session_cache import session_image_cache
 
 app = FastAPI()
 app.include_router(router)
 
-FIXTURES = Path(__file__).resolve().parents[2] / "worker" / "tests" / "fixtures"
-
-
-@pytest.fixture(autouse=True)
-def use_in_process_worker():
-    render_routes.worker_transport_override = ASGITransport(app=worker_app)
-    yield
-    render_routes.worker_transport_override = None
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.mark.asyncio
-async def test_render_relays_success_from_worker():
+async def test_render_streams_log_then_success_result():
     yaml_content = (FIXTURES / "minimal_valid.yaml").read_text()
     transport = ASGITransport(app=app)
     body = b""
@@ -41,7 +35,29 @@ async def test_render_relays_success_from_worker():
 
 
 @pytest.mark.asyncio
-async def test_render_rejects_oversized_yaml_without_calling_worker():
+async def test_render_streams_error_result_for_invalid_yaml():
+    yaml_content = (FIXTURES / "minimal_invalid.yaml").read_text()
+    transport = ASGITransport(app=app)
+    body = b""
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with client.stream(
+            "POST", "/render", json={"yaml_content": yaml_content}
+        ) as response:
+            async for chunk in response.aiter_bytes():
+                body += chunk
+
+    text = body.decode("utf-8")
+    assert '"status": "error"' in text
+
+
+@pytest.mark.asyncio
+async def test_render_rejects_oversized_yaml_without_running_rendercv(monkeypatch):
+    async def exploding_run_render(*args, **kwargs):
+        raise AssertionError("run_render must not be called for an oversized payload")
+        yield  # pragma: no cover - makes this an async generator
+
+    monkeypatch.setattr(render_routes, "run_render", exploding_run_render)
+
     huge_yaml = "cv:\n  name: " + ("x" * 300_000)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -74,33 +90,92 @@ async def test_render_rejects_malformed_content_length_header():
 
 
 @pytest.mark.asyncio
-async def test_render_surfaces_worker_non_200_as_sse_error_event():
-    """Fix 4: a non-200 from the worker must become a terminal SSE result event."""
-    failing_worker = FastAPI()
+async def test_render_emits_error_result_when_run_render_raises(monkeypatch):
+    """An unexpected exception from run_render must still terminate the SSE stream."""
 
-    @failing_worker.post("/render")
-    async def _fail() -> Response:
-        return Response(content="validation exploded", status_code=422)
+    async def exploding_run_render(*args, **kwargs):
+        raise RuntimeError("boom")
+        yield  # pragma: no cover - makes this an async generator
 
-    render_routes.worker_transport_override = ASGITransport(app=failing_worker)
+    monkeypatch.setattr(render_routes, "run_render", exploding_run_render)
+
     transport = ASGITransport(app=app)
     body = b""
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         async with client.stream("POST", "/render", json={"yaml_content": "cv: {}"}) as response:
-            assert response.status_code == 200
             async for chunk in response.aiter_bytes():
                 body += chunk
 
     text = body.decode("utf-8")
     assert "event: result" in text
     assert '"status": "error"' in text
-    assert "Worker returned 422" in text
-    assert "validation exploded" in text
+    assert "boom" in text
+
+
+@pytest.mark.asyncio
+async def test_render_passes_configured_timeout_to_run_render(monkeypatch):
+    monkeypatch.setattr(settings, "render_timeout_seconds", 77.5)
+    seen: dict[str, float] = {}
+
+    async def recording_run_render(yaml_content, image=None, timeout_seconds=30.0):
+        seen["timeout_seconds"] = timeout_seconds
+        return
+        yield  # pragma: no cover - makes this an async generator
+
+    monkeypatch.setattr(render_routes, "run_render", recording_run_render)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with client.stream("POST", "/render", json={"yaml_content": "cv: {}"}) as response:
+            async for _ in response.aiter_bytes():
+                pass
+
+    assert seen["timeout_seconds"] == 77.5
+
+
+@pytest.mark.asyncio
+async def test_render_limits_concurrent_renders(monkeypatch):
+    concurrent = 0
+    peak = 0
+    release = asyncio.Event()
+
+    async def slow_run_render(yaml_content, image=None, timeout_seconds=30.0):
+        nonlocal concurrent, peak
+        concurrent += 1
+        peak = max(peak, concurrent)
+        try:
+            await release.wait()
+        finally:
+            concurrent -= 1
+        return
+        yield  # pragma: no cover - makes this an async generator
+
+    monkeypatch.setattr(render_routes, "run_render", slow_run_render)
+
+    transport = ASGITransport(app=app)
+
+    async def one_request():
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            async with client.stream(
+                "POST", "/render", json={"yaml_content": "cv: {}"}
+            ) as response:
+                async for _ in response.aiter_bytes():
+                    pass
+
+    tasks = [asyncio.create_task(one_request()) for _ in range(5)]
+    for _ in range(20):
+        await asyncio.sleep(0)
+    observed_peak = peak
+    release.set()
+    await asyncio.gather(*tasks)
+
+    assert observed_peak <= render_routes._MAX_CONCURRENT_RENDERS
+    assert observed_peak >= 1
 
 
 @pytest.mark.asyncio
 async def test_render_rejects_oversized_chunked_body_without_content_length():
-    """Fix 6: the size cap must hold when Content-Length is absent (chunked body)."""
+    """The size cap must hold when Content-Length is absent (chunked body)."""
     oversized = b'{"yaml_content": "' + b"x" * 400_000 + b'"}'
 
     async def chunked_body():
@@ -118,7 +193,6 @@ async def test_render_rejects_oversized_chunked_body_without_content_length():
 
 @pytest.mark.asyncio
 async def test_render_rejects_malformed_json_body_with_422():
-    """Fix 6: malformed JSON is a clean 422, not an unhandled 500."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
@@ -132,8 +206,36 @@ async def test_render_rejects_malformed_json_body_with_422():
 
 
 @pytest.mark.asyncio
+async def test_render_passes_cached_session_image_to_run_render(monkeypatch):
+    session_image_cache.put("test-session", "avatar.png", b"fake-png-bytes")
+    seen: dict[str, tuple[str, bytes] | None] = {}
+
+    async def recording_run_render(yaml_content, image=None, timeout_seconds=30.0):
+        seen["image"] = image
+        return
+        yield  # pragma: no cover - makes this an async generator
+
+    monkeypatch.setattr(render_routes, "run_render", recording_run_render)
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            async with client.stream(
+                "POST",
+                "/render",
+                json={"yaml_content": "cv: {}"},
+                headers={"X-Session-Id": "test-session"},
+            ) as response:
+                async for _ in response.aiter_bytes():
+                    pass
+    finally:
+        session_image_cache.delete("test-session")
+
+    assert seen["image"] == ("avatar.png", b"fake-png-bytes")
+
+
+@pytest.mark.asyncio
 async def test_render_rejects_non_utf8_body_with_422():
-    """Fix 6: a non-UTF-8 payload is rejected cleanly rather than crashing."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(

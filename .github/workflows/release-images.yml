@@ -1,4 +1,4 @@
-name: Build and publish images
+name: Build and publish image
 
 on:
   push:
@@ -31,22 +31,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push backend image
+      - name: Build and push image
         uses: docker/build-push-action@v7
         with:
           context: .
           file: backend/Dockerfile
           push: true
           tags: |
-            ghcr.io/jfmilke/rendercv-web-backend:${{ steps.version.outputs.version }}
-            ghcr.io/jfmilke/rendercv-web-backend:latest
-
-      - name: Build and push worker image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: worker/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/jfmilke/rendercv-web-worker:${{ steps.version.outputs.version }}
-            ghcr.io/jfmilke/rendercv-web-worker:latest
+            ghcr.io/jfmilke/rendercv-web:${{ steps.version.outputs.version }}
+            ghcr.io/jfmilke/rendercv-web:latest

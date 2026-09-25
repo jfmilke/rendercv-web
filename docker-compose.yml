@@ -1,13 +1,14 @@
 services:
-  worker:
-    image: rendercv-web-worker:local
+  backend:
+    image: ghcr.io/jfmilke/rendercv-web:${RENDERCV_WEB_VERSION:-latest}
     build:
       context: .
-      dockerfile: worker/Dockerfile
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
     environment:
+      IMAGE_UPLOAD_ENABLED: ${IMAGE_UPLOAD_ENABLED:-false}
       RENDER_TIMEOUT_SECONDS: ${RENDER_TIMEOUT_SECONDS:-30}
-    networks:
-      - internal-net
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777,noexec,nosuid
@@ -15,38 +16,7 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-    pids_limit: 100
-    mem_limit: 512m
-    cpus: 1.0
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/version')"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+    pids_limit: 150
+    mem_limit: 1536m
+    cpus: 1.5
     restart: unless-stopped
-
-  backend:
-    image: rendercv-web-backend:local
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      WORKER_URL: http://worker:8000
-      IMAGE_UPLOAD_ENABLED: ${IMAGE_UPLOAD_ENABLED:-false}
-      RENDER_TIMEOUT_SECONDS: ${RENDER_TIMEOUT_SECONDS:-30}
-    # Container-level safety net only. Image uploads are deliberately uncapped
-    # per-request (design decision); this bounds the container as a whole.
-    mem_limit: 1g
-    networks:
-      - default
-      - internal-net
-    depends_on:
-      worker:
-        condition: service_healthy
-    restart: unless-stopped
-
-networks:
-  internal-net:
-    internal: true

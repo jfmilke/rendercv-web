@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from worker_app.executor import LogLine, RenderFailure, RenderSuccess, run_render
+from backend_app.executor import LogLine, RenderFailure, RenderSuccess, run_render
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -80,7 +80,7 @@ async def test_run_render_cleans_up_temp_directory(monkeypatch):
         created_dirs.append(Path(path))
         return path
 
-    monkeypatch.setattr("worker_app.executor.tempfile.mkdtemp", tracking_mkdtemp)
+    monkeypatch.setattr("backend_app.executor.tempfile.mkdtemp", tracking_mkdtemp)
 
     async for _ in run_render(yaml_content, image=None, timeout_seconds=30):
         pass
@@ -109,7 +109,7 @@ async def test_run_render_times_out_and_kills_process_group(monkeypatch):
         killed.append((pid, sig))
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
-    monkeypatch.setattr("worker_app.executor.os.killpg", fake_killpg)
+    monkeypatch.setattr("backend_app.executor.os.killpg", fake_killpg)
 
     events = [
         event async for event in run_render(yaml_content, image=None, timeout_seconds=0.05)
@@ -123,7 +123,7 @@ async def test_run_render_times_out_and_kills_process_group(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_run_render_ignores_image_with_path_traversal_filename(monkeypatch):
-    """Fix 11: a filename with path components is ignored, not written."""
+    """A filename with path components is ignored, not written."""
     created_dirs: list[Path] = []
     original_mkdtemp = tempfile.mkdtemp
 
@@ -132,7 +132,7 @@ async def test_run_render_ignores_image_with_path_traversal_filename(monkeypatch
         created_dirs.append(Path(path))
         return path
 
-    monkeypatch.setattr("worker_app.executor.tempfile.mkdtemp", tracking_mkdtemp)
+    monkeypatch.setattr("backend_app.executor.tempfile.mkdtemp", tracking_mkdtemp)
 
     written: list[Path] = []
     real_write_bytes = Path.write_bytes
@@ -153,8 +153,6 @@ async def test_run_render_ignores_image_with_path_traversal_filename(monkeypatch
         )
     ]
 
-    # Nothing was written outside (or anywhere via) the image path, and the
-    # render itself still completed rather than erroring out.
     assert written == []
     assert isinstance(events[-1], RenderSuccess | RenderFailure)
     tmpdir = created_dirs[0]
@@ -163,7 +161,7 @@ async def test_run_render_ignores_image_with_path_traversal_filename(monkeypatch
 
 @pytest.mark.asyncio
 async def test_run_render_writes_image_with_plain_filename(monkeypatch):
-    """Fix 11 control case: an ordinary filename is still written."""
+    """Control case: an ordinary filename is still written."""
     written: list[Path] = []
     real_write_bytes = Path.write_bytes
 
@@ -186,7 +184,7 @@ async def test_run_render_writes_image_with_plain_filename(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_run_render_kills_process_that_closes_stdout_without_exiting(monkeypatch):
-    """Fix 10: waiting for exit after EOF is itself bounded."""
+    """Waiting for exit after EOF is itself bounded."""
     yaml_content = (FIXTURES / "minimal_valid.yaml").read_text()
 
     stdout = asyncio.StreamReader()
@@ -214,8 +212,8 @@ async def test_run_render_kills_process_that_closes_stdout_without_exiting(monke
     killed = []
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
-    monkeypatch.setattr("worker_app.executor.os.killpg", lambda pid, sig: killed.append(pid))
-    monkeypatch.setattr("worker_app.executor._EXIT_GRACE_SECONDS", 0.05)
+    monkeypatch.setattr("backend_app.executor.os.killpg", lambda pid, sig: killed.append(pid))
+    monkeypatch.setattr("backend_app.executor._EXIT_GRACE_SECONDS", 0.05)
 
     events = [event async for event in run_render(yaml_content, image=None, timeout_seconds=30)]
 

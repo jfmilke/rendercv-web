@@ -1,4 +1,4 @@
-from rendercv_web_schemas.sse import format_sse_event
+from backend_app.sse import format_sse_event
 
 
 def test_format_sse_event_produces_valid_frame():

@@ -3,7 +3,6 @@ import os
 
 class Settings:
     def __init__(self) -> None:
-        self.worker_url: str = os.environ.get("WORKER_URL", "http://worker:8000")
         self.image_upload_enabled: bool = (
             os.environ.get("IMAGE_UPLOAD_ENABLED", "false").lower() == "true"
         )
