@@ -1,21 +1,12 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-import backend_app.render_routes as render_routes
 from backend_app.config import settings
 from backend_app.main import app
-from worker_app.main import app as worker_app
-
-
-@pytest.fixture(autouse=True)
-def use_in_process_worker():
-    render_routes.worker_transport_override = ASGITransport(app=worker_app)
-    yield
-    render_routes.worker_transport_override = None
 
 
 @pytest.mark.asyncio
-async def test_version_returns_worker_rendercv_version():
+async def test_version_returns_installed_rendercv_version():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/version")
@@ -62,7 +53,7 @@ async def test_security_headers_present_on_responses():
 @pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json"])
 @pytest.mark.asyncio
 async def test_api_documentation_endpoints_are_disabled(path):
-    """Fix 14: the route listing must not be published."""
+    """The route listing must not be published."""
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get(path)

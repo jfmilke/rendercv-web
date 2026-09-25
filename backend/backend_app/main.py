@@ -1,13 +1,12 @@
+from importlib.metadata import version as installed_version
 from pathlib import Path
 
-import httpx
 from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 
-import backend_app.render_routes as render_routes_module
 from backend_app.config import settings
 from backend_app.image_routes import router as image_router
 from backend_app.render_routes import router as render_router
-from fastapi.staticfiles import StaticFiles
 
 # Interactive docs and the OpenAPI schema are disabled: this app has no built-in
 # authentication, and there is no reason to publish a route listing (including
@@ -25,14 +24,7 @@ _version_cache: dict[str, str] = {}
 @app.get("/version")
 async def get_version() -> dict[str, str]:
     if "rendercv_version" not in _version_cache:
-        async with httpx.AsyncClient(
-            base_url=settings.worker_url,
-            timeout=5.0,
-            transport=render_routes_module.worker_transport_override,
-        ) as client:
-            response = await client.get("/version")
-            response.raise_for_status()
-            _version_cache["rendercv_version"] = response.json()["rendercv_version"]
+        _version_cache["rendercv_version"] = installed_version("rendercv")
     return {"rendercv_version": _version_cache["rendercv_version"]}
 
 
