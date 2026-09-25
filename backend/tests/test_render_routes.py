@@ -8,6 +8,7 @@ from httpx import ASGITransport, AsyncClient
 import backend_app.render_routes as render_routes
 from backend_app.config import settings
 from backend_app.render_routes import router
+from backend_app.session_cache import session_image_cache
 
 app = FastAPI()
 app.include_router(router)
@@ -113,7 +114,7 @@ async def test_render_emits_error_result_when_run_render_raises(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_render_passes_configured_timeout_to_run_render(monkeypatch):
-    settings.render_timeout_seconds = 77.5
+    monkeypatch.setattr(settings, "render_timeout_seconds", 77.5)
     seen: dict[str, float] = {}
 
     async def recording_run_render(yaml_content, image=None, timeout_seconds=30.0):
@@ -129,7 +130,6 @@ async def test_render_passes_configured_timeout_to_run_render(monkeypatch):
             async for _ in response.aiter_bytes():
                 pass
 
-    settings.render_timeout_seconds = 30.0
     assert seen["timeout_seconds"] == 77.5
 
 
@@ -203,6 +203,35 @@ async def test_render_rejects_malformed_json_body_with_422():
 
     assert response.status_code == 422
     assert response.json()["detail"] == "Invalid JSON body"
+
+
+@pytest.mark.asyncio
+async def test_render_passes_cached_session_image_to_run_render(monkeypatch):
+    session_image_cache.put("test-session", "avatar.png", b"fake-png-bytes")
+    seen: dict[str, tuple[str, bytes] | None] = {}
+
+    async def recording_run_render(yaml_content, image=None, timeout_seconds=30.0):
+        seen["image"] = image
+        return
+        yield  # pragma: no cover - makes this an async generator
+
+    monkeypatch.setattr(render_routes, "run_render", recording_run_render)
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            async with client.stream(
+                "POST",
+                "/render",
+                json={"yaml_content": "cv: {}"},
+                headers={"X-Session-Id": "test-session"},
+            ) as response:
+                async for _ in response.aiter_bytes():
+                    pass
+    finally:
+        session_image_cache.delete("test-session")
+
+    assert seen["image"] == ("avatar.png", b"fake-png-bytes")
 
 
 @pytest.mark.asyncio

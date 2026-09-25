@@ -21,10 +21,12 @@ COPY --from=frontend-build /frontend/dist ./static
 ENV HOME=/home/app
 USER app
 
-# The container runs with dropped capabilities, a read-only root filesystem,
-# and (per the operator's deployment) no route to the internet at runtime, for
-# security isolation around the code that runs rendercv/Typst on untrusted
-# input. rendercv's bundled Typst library unconditionally imports the
+# The container runs with dropped capabilities and a read-only root
+# filesystem for security isolation around the code that runs rendercv/Typst
+# on untrusted input; it has no reason to reach the network at render time,
+# even though (unlike the old network-isolated worker container) nothing
+# actually blocks egress at the network layer. rendercv's bundled Typst
+# library unconditionally imports the
 # third-party "@preview/fontawesome:0.6.0" Typst package for icon rendering on
 # every render, which Typst otherwise tries to download on first use.
 # Pre-warm Typst's package cache here at build time (when network access is

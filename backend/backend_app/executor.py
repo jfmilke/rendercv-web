@@ -77,10 +77,10 @@ async def run_render(
 
         if image is not None:
             image_filename, image_bytes = image
-            # Defense in depth: the backend sanitizes filenames before caching
-            # them, but the worker is the component whose job is handling
-            # untrusted input, so it does not rely on that invariant. A name
-            # containing any path component is ignored rather than written.
+            # Defense in depth: image_routes sanitizes filenames before
+            # caching; this layer re-checks rather than trusting that
+            # invariant. A name containing any path component is ignored
+            # rather than written.
             if Path(image_filename).name == image_filename and image_filename not in (
                 "",
                 ".",
