@@ -28,7 +28,7 @@ docker compose pull
 docker compose up
 ```
 
-Images are published automatically whenever a version is tagged (`v*`) and released; see `.github/workflows/release-images.yml`. Pin `RENDERCV_WEB_VERSION` in `.env` to an exact version instead of `latest` for reproducible deploys.
+Pin `RENDERCV_WEB_VERSION` in `.env` to an exact version instead of `latest` for reproducible deploys.
 
 Open http://localhost:8000.
 
@@ -44,16 +44,11 @@ Set these in `.env` (copied from `.env.example`):
 ## Security
 
 This app has no authentication built in, and anyone who can reach it can submit renders.
-It's meant for localhost or a trusted network. If you expose it beyond that, put a reverse proxy in front that handles access control and TLS (for example Caddy `basic_auth` or nginx `auth_basic`).
-
-The container itself runs with a read-only root filesystem, all Linux capabilities dropped, and no ability to gain new privileges — the same hardening that used to apply only to the isolated renderer now applies to the whole process, since rendering happens in the same container as the API.
+It's meant for localhost or a trusted network. If you expose it beyond that, put a reverse proxy in front that handles access control and TLS (for example Caddy `basic_auth` or nginx `auth_basic`). See [AGENTS.md](AGENTS.md) for how the container is hardened.
 
 ## How it works
 
-Two pieces:
-
-- **frontend**: the browser UI (React), built into static files
-- **backend**: serves the frontend, exposes the render API, and runs RenderCV itself as a sandboxed subprocess (fresh temp directory per render, CPU/file-descriptor limits, a wall-clock timeout, and a concurrency cap)
+One Docker container serves the frontend and runs RenderCV. See [AGENTS.md](AGENTS.md) for the architecture in detail.
 
 ## Contributing
 
@@ -79,7 +74,7 @@ npm install
 npm test
 ```
 
-[AGENTS.md](AGENTS.md) covers the architecture, why things are isolated the way they are, and notes worth knowing before changing dependencies (in particular, `monaco-editor`'s pinned version). Please run both test suites before opening a PR.
+[AGENTS.md](AGENTS.md) covers the architecture, the security model, and notes worth knowing before changing dependencies (in particular, `monaco-editor`'s pinned version). Please run both test suites before opening a PR.
 
 ## Credits
 
